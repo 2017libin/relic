@@ -930,6 +930,85 @@ static void fp12_sqr_cyc_t(fp12_t c, fp12_t a) {
 	}
 }
 
+void fp12_back_cyc_sim_t(fp12_t c[], fp12_t a[], int n) {
+    fp2_t *t = RLC_ALLOCA(fp2_t, n * 3);
+    fp2_t
+        *t0 = t + 0 * n,
+        *t1 = t + 1 * n,
+        *t2 = t + 2 * n;
+
+	if (n == 0) {
+		RLC_FREE(t);
+		return;
+	}
+
+	RLC_TRY {
+		if (t == NULL) {
+			RLC_THROW(ERR_NO_MEMORY);
+		}
+		for (int i = 0; i < n; i++) {
+			fp2_null(t0[i]);
+			fp2_null(t1[i]);
+			fp2_null(t2[i]);
+			fp2_new(t0[i]);
+			fp2_new(t1[i]);
+			fp2_new(t2[i]);
+		}
+
+		for (int i = 0; i < n; i++) {
+			/* t0 = g4^2. */
+			fp2_sqr(t0[i], a[i][1][1]);
+			/* t1 = 3 * g4^2 - 2 * g3. */
+			fp2_sub(t1[i], t0[i], a[i][1][0]);
+			fp2_dbl(t1[i], t1[i]);
+			fp2_add(t1[i], t1[i], t0[i]);
+			/* t0 = E * g5^2 + t1. */
+			fp2_sqr(t2[i], a[i][1][2]);
+			fp2_mul_nor(t0[i], t2[i]);
+			fp2_add(t0[i], t0[i], t1[i]);
+			/* t1 = (4 * g2). */
+			fp2_dbl(t1[i], a[i][0][2]);
+			fp2_dbl(t1[i], t1[i]);
+		}
+
+		/* t1 = 1 / t1. */
+		fp2_inv_sim(t1, t1, n);
+
+		for (int i = 0; i < n; i++) {
+			/* t0 = g1. */
+			fp2_mul(c[i][0][1], t0[i], t1[i]);
+
+			/* t1 = g3 * g4. */
+			fp2_mul(t1[i], a[i][1][0], a[i][1][1]);
+			/* t2 = 2 * g1^2 - 3 * g3 * g4. */
+			fp2_sqr(t2[i], c[i][0][1]);
+			fp2_sub(t2[i], t2[i], t1[i]);
+			fp2_dbl(t2[i], t2[i]);
+			fp2_sub(t2[i], t2[i], t1[i]);
+			/* t1 = g2 * g5. */
+			fp2_mul(t1[i], a[i][0][2], a[i][1][2]);
+			/* t2 = E * (2 * g1^2 + g2 * g5 - 3 * g3 * g4) + 1. */
+			fp2_add(t2[i], t2[i], t1[i]);
+			fp2_mul_nor(c[i][0][0], t2[i]);
+			fp_add_dig(c[i][0][0][0], c[i][0][0][0], 1);
+
+			fp2_copy(c[i][1][1], a[i][1][1]);
+			fp2_copy(c[i][0][2], a[i][0][2]);
+			fp2_copy(c[i][1][0], a[i][1][0]);
+			fp2_copy(c[i][1][2], a[i][1][2]);
+		}
+	} RLC_CATCH_ANY {
+		RLC_THROW(ERR_CAUGHT);
+	} RLC_FINALLY {
+		for (int i = 0; i < n; i++) {
+			fp2_free(t0[i]);
+			fp2_free(t1[i]);
+			fp2_free(t2[i]);
+		}
+		RLC_FREE(t);
+	}
+}
+
 static void fp12_pow(fp12_t r, const fp12_t a, const sm9_bn_t k)
 {
 	char kbits[257];
@@ -994,6 +1073,86 @@ static void fp12_pow_t(fp12_t c, fp12_t a, bn_t b) {
 	}
 	RLC_FINALLY {
 		fp12_free(t);
+	}
+}
+
+//modify from fp12_exp_cyc_sps
+void fp12_pow_cyc_sps_t(fp12_t c, fp12_t a, const int *b, int len, int sign) {
+	int i, j, k, w = len;
+    fp12_t t, *u = RLC_ALLOCA(fp12_t, w);
+
+	if (len == 0) {
+		RLC_FREE(u);
+		fp12_set_dig(c, 1);
+		return;
+	}
+
+	fp12_null(t);
+
+	RLC_TRY {
+		if (u == NULL) {
+			RLC_THROW(ERR_NO_MEMORY);
+		}
+		for (i = 0; i < w; i++) {
+			fp12_null(u[i]);
+			fp12_new(u[i]);
+		}
+		fp12_new(t);
+
+		fp12_copy(t, a);
+		if (b[0] == 0) {
+			for (j = 0, i = 1; i < len; i++) {
+				k = (b[i] < 0 ? -b[i] : b[i]);
+				for (; j < k; j++) {
+					fp12_sqr_pck_t(t, t);
+				}
+				if (b[i] < 0) {
+					fp12_inv_cyc_t(u[i - 1], t);
+				} else {
+					fp12_copy(u[i - 1], t);
+				}
+			}
+
+			fp12_back_cyc_sim_t(u, u, w - 1);
+
+			fp12_copy(c, a);
+			for (i = 0; i < w - 1; i++) {
+				fp12_mul_t(c, c, u[i]);
+			}
+		} else {
+			for (j = 0, i = 0; i < len; i++) {
+				k = (b[i] < 0 ? -b[i] : b[i]);
+				for (; j < k; j++) {
+					fp12_sqr_pck_t(t, t);
+				}
+				if (b[i] < 0) {
+					fp12_inv_cyc_t(u[i], t);
+				} else {
+					fp12_copy(u[i], t);
+				}
+			}
+
+			fp12_back_cyc_sim_t(u, u, w);
+
+			fp12_copy(c, u[0]);
+			for (i = 1; i < w; i++) {
+				fp12_mul_t(c, c, u[i]);
+			}
+		}
+
+		if (sign == RLC_NEG) {
+			fp12_inv_cyc_t(c, c);
+		}
+	}
+	RLC_CATCH_ANY {
+		RLC_THROW(ERR_CAUGHT);
+	}
+	RLC_FINALLY {
+		for (i = 0; i < w; i++) {
+			fp12_free(u[i]);
+		}
+		fp12_free(t);
+		RLC_FREE(u);
 	}
 }
 
@@ -1155,6 +1314,38 @@ static void fp12_frobenius6(fp12_t r, const fp12_t x)
 	fp4_free(b);
 	fp4_free(c);
 }
+
+void fp12_conv_cyc_t(fp12_t c, fp12_t a) {
+	fp12_t t;
+
+	fp12_null(t);
+
+	RLC_TRY {
+		fp12_new(t);
+
+		/* First, compute c = a^(p^6 - 1). */
+		/* t = a^{-1}. */
+		fp12_inv_t(t, a);
+		/* c = a^(p^6). */
+		fp12_inv_cyc_t(c, a);
+		/* c = a^(p^6 - 1). */
+		fp12_mul_t(c, c, t);
+
+		/* Second, compute c^(p^2 + 1). */
+		/* t = c^(p^2). */
+		fp12_frb_t(t, c, 2);
+
+		/* c = c^(p^2 + 1). */
+		fp12_mul_t(c, c, t);
+	}
+	RLC_CATCH_ANY {
+		RLC_THROW(ERR_CAUGHT);
+	}
+	RLC_FINALLY {
+		fp12_free(t);
+	}
+}
+
 #include <inttypes.h>
 static void ep2_pi1(ep2_t R, const ep2_t P)
 {
@@ -1800,6 +1991,84 @@ static void sm9_final_exponent_hard_part_t(fp12_t r, const fp12_t f)
 	fp12_free(t3);
 }
 
+static void pp_pow_bn_t(fp12_t c, fp12_t a) {
+	fp12_t y0, y1, y2, y3,T0;
+	bn_t x;
+	const int *b;
+	int l;
+
+	fp12_null(y0);
+	fp12_null(y1);
+	fp12_null(y2);
+	fp12_null(y3);
+	fp12_null(T0);
+	bn_null(x);
+
+	RLC_TRY {
+		fp12_new(y0);
+		fp12_new(y1);
+		fp12_new(y2);
+		fp12_new(y3);
+		fp12_new(T0);
+		bn_new(x);
+
+		fp_prime_get_par(x);                
+		b = fp_prime_get_par_sps(&l);       
+
+
+		fp12_conv_cyc_t(c, a);
+
+		fp12_inv_cyc_t(y0,c);
+		fp12_pow_cyc_sps_t(T0, y0, b, l, RLC_POS);   
+		fp12_sqr_cyc_t(y3,T0);
+		fp12_frb_t(y2,y3,1);                         
+		fp12_mul_t(y2,y3,y2);
+		fp12_sqr_cyc_t(y2,y2);
+		fp12_mul_t(y2,y3,y2);
+
+		fp12_mul_t(y1,y3,T0);
+		fp12_pow_cyc_sps_t(T0, y1, b, l, RLC_NEG);
+		fp12_frb_t(y1,T0,2);
+		fp12_mul_t(y1,y0,y1);
+		fp12_inv_cyc_t(T0,T0);
+		fp12_frb_t(y3,T0,1);
+		fp12_mul_t(y3,T0,y3);
+		fp12_sqr_cyc_t(T0,T0);
+		fp12_mul_t(y1,T0,y1);
+		
+		fp12_pow_cyc_sps_t(T0, y3, b, l, RLC_NEG);
+		fp12_sqr_cyc_t(T0,T0);
+		fp12_inv_cyc_t(T0,T0);
+		fp12_mul_t(y3,T0,y3);
+		
+		fp12_frb_t(T0,c,1);
+		fp12_frb_t(y0,c,2);
+		fp12_mul_t(y0,T0,y0);
+		fp12_frb_t(T0,c,3);
+		fp12_mul_t(y0,T0,y0);
+
+		fp12_sqr_cyc_t(T0,y3);
+		fp12_mul_t(T0,T0,y2);
+		fp12_mul_t(y3,T0,y0);
+		fp12_mul_t(T0,T0,y1);
+		fp12_sqr_cyc_t(T0,T0);
+		fp12_mul_t(c,T0,y3);
+
+
+	}
+	RLC_CATCH_ANY {
+		RLC_THROW(ERR_CAUGHT);
+	}
+	RLC_FINALLY {
+		fp12_free(y0);
+		fp12_free(y1);
+		fp12_free(y2);
+		fp12_free(y3);
+		fp12_free(T0);
+		bn_free(x);
+	}
+}
+
 static void sm9_final_exponent(fp12_t r, const fp12_t f)
 {
 	fp12_t t0;
@@ -1832,7 +2101,7 @@ static void sm9_final_exponent(fp12_t r, const fp12_t f)
 	fp12_free(t1);
 }
 
-static void sm9_final_exponenter(fp12_t r, const fp12_t f)
+static void sm9_final_exponent_t(fp12_t r, const fp12_t f)
 {
 	fp12_t t0;
 	fp12_t t1;
@@ -1856,37 +2125,6 @@ static void sm9_final_exponenter(fp12_t r, const fp12_t f)
 	fp12_mul_t(t0, t0, t1);
 
 	sm9_final_exponent_hard_parter(t0, t0);
-	// PERFORMANCE_TEST_NEW("sm9_final_exponent_hard_part",sm9_final_exponent_hard_part(t0, t0));
-	fp12_copy(r, t0);
-	
-	fp12_free(t0);
-	fp12_free(t1);
-}
-
-static void sm9_final_exponent_t(fp12_t r, const fp12_t f)
-{
-	fp12_t t0;
-	fp12_t t1;
-
-	fp12_null(t0);
-	fp12_null(t1);
-
-	fp12_new(t0);
-	fp12_new(t1);
-
-	//fp12_frb_t(t0, f,6);
-	fp12_frobenius6(t0,f);
-
-	fp12_inv_t(t1, f);
-
-	fp12_mul_t(t0, t0, t1);
-	
-	//fp12_frb_t(t1, t0,2);
-	fp12_frobenius2(t1,t0);
-
-	fp12_mul_t(t0, t0, t1);
-
-	sm9_final_exponent_hard_part_t(t0, t0);
 	// PERFORMANCE_TEST_NEW("sm9_final_exponent_hard_part",sm9_final_exponent_hard_part(t0, t0));
 	fp12_copy(r, t0);
 	
@@ -2200,6 +2438,7 @@ void sm9_pairing_fast(fp12_t r, const ep2_t Q, const ep_t P){
 
 	fp12_mul_t(r, f_num, f_den);  // r = f_num*f_den = f
 
+	//pp_pow_bn_t(r,r);
 	sm9_final_exponent(r, r);  // r = f^{(q^12-1)/r'}
 	// PERFORMANCE_TEST_NEW("sm9_final_exponent", sm9_final_exponent(r, r));
 
@@ -2318,7 +2557,7 @@ void sm9_pairing_faster(fp12_t r, const ep2_t Q, const ep_t P){
 
 	fp12_mul_t(r, f_num, f_den);  // r = f_num*f_den = f
 
-	sm9_final_exponenter(r, r);  // r = f^{(q^12-1)/r'}
+	sm9_final_exponent_t(r, r);  // r = f^{(q^12-1)/r'}
 	// PERFORMANCE_TEST_NEW("sm9_final_exponent", sm9_final_exponent(r, r));
 
 	ep_free(_p);
@@ -2339,7 +2578,7 @@ void sm9_pairing_faster(fp12_t r, const ep2_t Q, const ep_t P){
 }
 
 
-void sm9_pairing_t(fp12_t r, const ep2_t Q, const ep_t P){
+void sm9_pairing_fastest(fp12_t r, const ep2_t Q, const ep_t P){
 	// a)
 	const char *abits = "00100000000000000000000000000000000000010001020200020200101000020";
 	
@@ -2436,7 +2675,7 @@ void sm9_pairing_t(fp12_t r, const ep2_t Q, const ep_t P){
 
 	fp12_mul_t(r, f_num, f_den);  // r = f_num*f_den = f
 
-	sm9_final_exponent_t(r, r);  // r = f^{(q^12-1)/r'}
+	pp_pow_bn_t(r,r); // r = f^{(q^12-1)/r'}
 	// PERFORMANCE_TEST_NEW("sm9_final_exponent", sm9_final_exponent(r, r));
 
 	ep_free(_p);

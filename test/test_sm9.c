@@ -989,7 +989,7 @@ void test_other_pairing_new(){
 	PERFORMANCE_TEST_NEW("pairing_gmssl", sm9_pairing(r, Ppub, g1));
 	PERFORMANCE_TEST_NEW("pairing_fast", sm9_pairing_fast(r, Ppub, g1));
 	PERFORMANCE_TEST_NEW("pairing_faster", sm9_pairing_faster(r, Ppub, g1));
-	PERFORMANCE_TEST_NEW("pairing_t", sm9_pairing_t(r, Ppub, g1));
+	PERFORMANCE_TEST_NEW("pairing_t", sm9_pairing_fastest(r, Ppub, g1));
 	PERFORMANCE_TEST_NEW("pp_map_tatep_k12(r, g1, Ppub)", pp_map_tatep_k12(r, g1, Ppub));
 	PERFORMANCE_TEST_NEW("pp_map_weilp_k12(r, g1, Ppub)", pp_map_weilp_k12(r, g1, Ppub));
 	PERFORMANCE_TEST_NEW("pp_map_oatep_k12(r, g1, Ppub)", pp_map_oatep_k12(r, g1, Ppub));
