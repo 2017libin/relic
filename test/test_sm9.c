@@ -299,7 +299,7 @@ void test_sm9_pairing(int threads_num){
 	PERFORMANCE_TEST_NEW("pp_map_oatep_k12(r, g1, Ppub)", pp_map_oatep_k12(r, g1, Ppub));
 #endif
 	
-#if 1
+#if 0
 	//test functions
 	//printf("raw :\n");
 	//sm9_pairing_function_test(r, Ppub, g1);
@@ -1049,7 +1049,7 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 	// test_other_pairing();
-	test_other_pairing_new();
+	// test_other_pairing_new();
 	//test_a_lot();
 	// test_miller();
 	//test_ep_add();
