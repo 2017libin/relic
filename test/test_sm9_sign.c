@@ -31,6 +31,8 @@ int main(void)
 		return 0;
 	}
 	SM9_SIGN_KEY sign_key;
+	ep2_rand(sign_key.Ppubs);
+	ep_rand(sign_key.ds);
 	SM9_SIGN_CTX sign_ctx;
 	const char *id = "Alice";
 	uint8_t sig[104];
@@ -41,18 +43,27 @@ int main(void)
 	size_t len;
 	int ret;
 
-
+//	printf("shit\n");
 	sm9_sign_init(&sign_ctx);
 	sm9_sign_update(&sign_ctx, (uint8_t *)"hello world", strlen("hello world"));
-
+//  printf("shit2\n");
 	// 测试 sm9_do_sign 和 pairing
 	// sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
-
+//  printf("shit3\n");
 	// 测试sm9_sign
-	PERFORMANCE_TEST_NEW("sm9_sign", sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen));
+	//PERFORMANCE_TEST_NEW("sm9_sign", sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen));
+	// sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
+	// format_bytes(stdout, 0, 0, "signature", sig, siglen);
+	printf("\n\nbefore step 1\n");
+	sm9_sign_finish_precompute_step1(&sign_ctx, &sign_key, sig, &siglen);
+	printf("\n\nbefore step 2\n");
 
 	
-	format_bytes(stdout, 0, 0, "signature", sig, siglen);
 
+	sm9_sign_finish_precompute_step2(&sign_ctx, &sign_key, sig, &siglen);
+	PERFORMANCE_TEST_NEW("sm9_sign",sm9_sign_finish_precompute_step2(&sign_ctx, &sign_key, sig, &siglen));
+	
+	format_bytes(stdout, 0, 0, "signature", sig, siglen);
+//  printf("shit4\n");
 	return 0;
 }
