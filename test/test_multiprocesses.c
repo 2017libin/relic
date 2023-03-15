@@ -70,6 +70,39 @@ void test_processes_init(){
 
     sm9_init();
 }
+uint8_t sign_arr[count][104];
+uint8_t buf_arr[count][512];
+size_t siglen[count];
+// SM9_SIGN_KEY sign_key[count];
+// SM9_SIGN_CTX sign_ctx[count];
+
+void test_sign_processes_init(){
+	
+if (core_init() != RLC_OK) {
+		core_clean();
+		return 1;
+	}
+
+	if (pc_param_set_any() != RLC_OK) {
+		RLC_THROW(ERR_NO_CURVE);
+		core_clean();
+		return 0;
+	}
+	
+	// const char *id = "Alice";
+
+	// for(size_t i=0;i<count;i++){
+	// 	for(size_t j=0;j<104;j++)
+	// 		sign_arr[i][j] = '0';
+	// 	for(size_t j=0;j<512;j++)
+	// 		buf_arr[i][j] = '1';
+	// 	siglen[i] = i;
+	// }
+	
+
+
+}
+
 
 void run(int pid)
 {
@@ -84,7 +117,17 @@ void run(int pid)
 
     for (size_t i = start; i < end; i++)
     {
-        sm9_pairing_faster(r_arr[i], Ppub_arr[i], g1_arr[i]);
+        //sm9_pairing_fastest(r_arr[i], Ppub_arr[i], g1_arr[i]);
+		SM9_SIGN_KEY sign_key;
+	 SM9_SIGN_CTX sign_ctx;
+	 
+
+	sm9_sign_init(&sign_ctx);
+	sm9_sign_update(&sign_ctx, (uint8_t *)"hello world", strlen("hello world"));
+
+	//sm9_sign_finish(&sign_ctx, &sign_key, sign_arr[i], &siglen[i]);
+	
+	sm9_sign_finish_precompute_step2(&sign_ctx, &sign_key, sign_arr[i], &siglen[i]);
     }
 
 #if 0
@@ -133,8 +176,8 @@ int test_processes(int num_processes){
     process_do_num = count / num_processes;
     
     // 初始化输入
-    test_processes_init();
-
+    //test_processes_init();
+	test_sign_processes_init();
     int status, i;
     pid_t pid[num_processes], retpid;
 
@@ -146,6 +189,7 @@ int test_processes(int num_processes){
     {
         if ((pid[i] = fork()) == 0)
         {
+			printf("i = %d ",1);
             run(i);
         }
     }
