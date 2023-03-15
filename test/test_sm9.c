@@ -269,9 +269,9 @@ void test_sm9_pairing(int threads_num){
 	// g1_free(g1);
 	// ep2_free(Ppub);
 	// fp12_free(r);
-#if 0
+#if 1
 	// 测试正确性
-	sm9_pairing_fast(r, Ppub, g1);
+	sm9_pairing_fastest(r, Ppub, g1);
 	printf("in: Ppub\n");
 	ep2_print(Ppub);
 	printf("in: g1\n");
@@ -299,17 +299,21 @@ void test_sm9_pairing(int threads_num){
 	PERFORMANCE_TEST_NEW("pp_map_oatep_k12(r, g1, Ppub)", pp_map_oatep_k12(r, g1, Ppub));
 #endif
 	
-#if 0      
+#if 1
 	//test functions
-	
-	sm9_pairing_function_test(r, Ppub, g1);
+	//printf("raw :\n");
+	//sm9_pairing_function_test(r, Ppub, g1);
 	sm9_pairing_steps_test(r, Ppub, g1);
-	sm9_TEST(r,Ppub,g1);	
+	printf("updated :\n");
+	sm9_pairing_fastest_function_test(r, Ppub, g1);
+	//sm9_pairing_fastest_step_test(r, Ppub, g1);
+	//sm9_TEST(r,Ppub,g1);	
 	// sm9_pairing_function_test(r, Ppub, g1);
 	// sm9_pairing_steps_test(r, Ppub, g1);
 	// sm9_TEST(r,Ppub,g1);
-	sm9_pairing_fast_step_test(r, Ppub, g1);
-	sm9_pairing_fast_step_test2(r, Ppub, g1);
+	//sm9_pairing_fast_step_test(r, Ppub, g1);
+
+	//sm9_pairing_fastest_step_test(r, Ppub, g1);
 #endif
 
 #if 0
@@ -989,10 +993,13 @@ void test_other_pairing_new(){
 	PERFORMANCE_TEST_NEW("pairing_gmssl", sm9_pairing(r, Ppub, g1));
 	PERFORMANCE_TEST_NEW("pairing_fast", sm9_pairing_fast(r, Ppub, g1));
 	PERFORMANCE_TEST_NEW("pairing_faster", sm9_pairing_faster(r, Ppub, g1));
-	PERFORMANCE_TEST_NEW("pairing_t", sm9_pairing_fastest(r, Ppub, g1));
+	PERFORMANCE_TEST_NEW("pairing_fastest", sm9_pairing_fastest(r, Ppub, g1));
+	PERFORMANCE_TEST_NEW("pairing_fastest2", sm9_pairing_fastest2(r, Ppub, g1));
+
 	PERFORMANCE_TEST_NEW("pp_map_tatep_k12(r, g1, Ppub)", pp_map_tatep_k12(r, g1, Ppub));
 	PERFORMANCE_TEST_NEW("pp_map_weilp_k12(r, g1, Ppub)", pp_map_weilp_k12(r, g1, Ppub));
 	PERFORMANCE_TEST_NEW("pp_map_oatep_k12(r, g1, Ppub)", pp_map_oatep_k12(r, g1, Ppub));
+	
 #endif
 
 #if 0
