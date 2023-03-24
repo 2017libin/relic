@@ -18,6 +18,53 @@
 #include <unistd.h>
 #include <signal.h>
 
+void test_sm9_sign_and_verify(const uint8_t data1[],const char id1[]){
+
+	int j = 1;
+	SM9_SIGN_KEY sign_key;
+	SM9_SIGN_MASTER_KEY sign_master;
+
+	user_key_init(&sign_key);
+	master_key_init(&sign_master);
+
+	SM9_SIGN_CTX ctx;
+	const char *id = "Alice";
+	uint8_t sig[104];
+	size_t siglen;
+
+	char ks[] = "130E78459D78545CB54C587E02CF480CE0B66340F319F348A1D5B1F2DC5F4";
+	bn_read_str(sign_master.ks,ks,strlen(ks),16);
+	//sm9_bn_t ks = {0x1F2DC5F4,0x348A1D5B,0x340F319F,0x80CE0B66,0x87E02CF4,0x45CB54C5,0x8459D785,0x0130E7};
+	//bn_to_bn(sign_master.ks,ks);
+	ep2_mul_gen(sign_master.Ppubs,sign_master.ks);
+
+	//ep2_copy(sign_master.Ppubs,Ppub);
+
+	// data = "Chinese IBS standard"
+	uint8_t data[20] = {0x43, 0x68, 0x69, 0x6E, 0x65, 0x73, 0x65, 0x20, 0x49, 0x42, 0x53, 0x20, 0x73, 0x74, 0x61, 0x6E, 0x64, 0x61, 0x72, 0x64};
+	
+	// sm9_sign_master_key_generate(&sign_master);
+	sm9_sign_master_key_extract_key(&sign_master, id, strlen(id), &sign_key);
+	sm9_sign_init(&ctx);
+	sm9_sign_update(&ctx,data, sizeof(data));
+	sm9_sign_finish(&ctx, &sign_key, sig, &siglen);
+	format_bytes(stdout, 0, 0, "signature", sig, siglen);
+
+	sm9_verify_init(&ctx);
+	sm9_verify_update(&ctx, data, sizeof(data));
+	if (sm9_verify_finish(&ctx, sig, siglen, &sign_master, id, strlen(id)) != 1) goto err; ++j;
+	format_bytes(stdout, 0, 0, "signature", sig, siglen);
+
+	master_key_free(&sign_master);
+	user_key_free(&sign_key);
+
+	return 1;
+err:
+	printf("%s test %d failed\n", __FUNCTION__, j);
+	error_print();
+	return -1;
+}
+
 int main(void)
 {
 	if (core_init() != RLC_OK) {
@@ -30,40 +77,12 @@ int main(void)
 		core_clean();
 		return 0;
 	}
-	SM9_SIGN_KEY sign_key;
-	ep2_rand(sign_key.Ppubs);
-	ep_rand(sign_key.ds);
-	SM9_SIGN_CTX sign_ctx;
-	const char *id = "Alice";
-	uint8_t sig[104];
-	size_t siglen;
-	uint8_t buf[512];
-	uint8_t *p = buf;
-	const uint8_t *cp = buf;
-	size_t len;
-	int ret;
-
-//	printf("shit\n");
-	sm9_sign_init(&sign_ctx);
-	sm9_sign_update(&sign_ctx, (uint8_t *)"hello world", strlen("hello world"));
-//  printf("shit2\n");
-	// 测试 sm9_do_sign 和 pairing
-	// sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
-//  printf("shit3\n");
-	// 测试sm9_sign
-	//PERFORMANCE_TEST_NEW("sm9_sign", sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen));
-	// sm9_sign_finish(&sign_ctx, &sign_key, sig, &siglen);
-	// format_bytes(stdout, 0, 0, "signature", sig, siglen);
-	printf("\n\nbefore step 1\n");
-	sm9_sign_finish_precompute_step1(&sign_ctx, &sign_key, sig, &siglen);
-	printf("\n\nbefore step 2\n");
-
+	char *id = "Alice";
+	char *data =  "Chinese IBS standard";
 	
+	test_sm9_sign_and_verify(data,id);
+	core_clean();
 
-	sm9_sign_finish_precompute_step2(&sign_ctx, &sign_key, sig, &siglen);
-	PERFORMANCE_TEST_NEW("sm9_sign",sm9_sign_finish_precompute_step2(&sign_ctx, &sign_key, sig, &siglen));
-	
-	format_bytes(stdout, 0, 0, "signature", sig, siglen);
-//  printf("shit4\n");
 	return 0;
 }
+
