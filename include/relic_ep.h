@@ -99,6 +99,7 @@ enum {
 	BN_P256,
 	/** Barreto-Naehrig curve standardized in China. */
 	SM9_P256,
+    SM2_P256,
 	/** Barreto-Lynn-Scott curve with embedding degree 24 (SNARK curve). */
 	B24_P315,
 	/** Barreto-Lynn-Scott curve with embedding degree 24 (SNARK curve). */
